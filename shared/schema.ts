@@ -70,6 +70,9 @@ export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  monthlyNetSalary: z.union([z.string(), z.number()]).transform((val) => String(val)).optional(),
+  annualGrossSalary: z.union([z.string(), z.number()]).transform((val) => String(val)).optional(),
 });
 
 export const insertExpenseSchema = createInsertSchema(expenses).omit({
