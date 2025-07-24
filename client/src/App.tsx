@@ -9,6 +9,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Setup from "@/pages/setup";
+import Auth from "@/pages/auth";
 import type { UserProfile } from "@shared/schema";
 
 function Router() {
@@ -36,7 +37,10 @@ function Router() {
   return (
     <Switch>
       {!isAuthenticated ? (
-        <Route path="/" component={Landing} />
+        <>
+          <Route path="/" component={Landing} />
+          <Route path="/auth" component={Auth} />
+        </>
       ) : !isSetupComplete ? (
         <Route path="/" component={Setup} />
       ) : (

@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertUserProfileSchema, insertExpenseSchema } from "@shared/schema";
+import { insertUserProfileSchema, insertExpenseSchema, insertOtpSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -21,6 +21,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mobile OTP Authentication Routes
+  app.post('/api/auth/send-otp', async (req, res) => {
+    try {
+      const { mobile } = req.body;
+      
+      if (!mobile) {
+        return res.status(400).json({ message: "Mobile number is required" });
+      }
+
+      // Generate 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+      // Save OTP to database
+      await storage.createOtp({
+        mobile,
+        email: null,
+        otp,
+        expiresAt,
+        isVerified: "false",
+        attempts: "0",
+      });
+
+      // In a real application, you would send SMS here
+      // For demo purposes, we'll log the OTP (remove in production)
+      console.log(`OTP for ${mobile}: ${otp}`);
+      
+      // Simulate SMS sending success
+      res.json({ 
+        message: "OTP sent successfully",
+        // For demo only - remove in production
+        debug_otp: otp 
+      });
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      res.status(500).json({ message: "Failed to send OTP" });
+    }
+  });
+
+  app.post('/api/auth/verify-otp', async (req, res) => {
+    try {
+      const { mobile, otp } = req.body;
+      
+      if (!mobile || !otp) {
+        return res.status(400).json({ message: "Mobile number and OTP are required" });
+      }
+
+      // Verify OTP
+      const isValid = await storage.verifyOtp(mobile, otp);
+      
+      if (!isValid) {
+        return res.status(400).json({ message: "Invalid or expired OTP" });
+      }
+
+      // Create or get user by mobile
+      let user = await storage.getUserByMobile(mobile);
+      if (!user) {
+        // Create new user
+        user = await storage.createUserWithMobile({
+          id: `mobile_${mobile.replace(/[^0-9]/g, '')}`,
+          mobile,
+          firstName: "User",
+          lastName: "",
+          email: null,
+          profileImageUrl: null,
+        });
+      }
+
+      // For mobile OTP authentication, we return user data
+      // Frontend will handle storing authentication state temporarily
+
+      res.json({ 
+        message: "Login successful",
+        user: {
+          id: user.id,
+          mobile: user.mobile,
+          firstName: user.firstName,
+        }
+      });
+    } catch (error) {
+      console.error("Error verifying OTP:", error);
+      res.status(500).json({ message: "Failed to verify OTP" });
+    }
+  });
+
   // Profile routes
   app.get('/api/profile', isAuthenticated, async (req: any, res) => {
     try {
@@ -29,6 +114,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(profile);
     } catch (error) {
       console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  // Mobile auth profile route
+  app.get('/api/mobile/profile/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const profile = await storage.getUserProfile(userId);
+      res.json(profile);
+    } catch (error) {
+      console.error("Error fetching mobile profile:", error);
       res.status(500).json({ message: "Failed to fetch profile" });
     }
   });
@@ -71,6 +168,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(expenses);
     } catch (error) {
       console.error("Error fetching expenses:", error);
+      res.status(500).json({ message: "Failed to fetch expenses" });
+    }
+  });
+
+  // Mobile auth expense route
+  app.get('/api/mobile/expenses/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const expenses = await storage.getUserExpenses(userId, limit);
+      res.json(expenses);
+    } catch (error) {
+      console.error("Error fetching mobile expenses:", error);
       res.status(500).json({ message: "Failed to fetch expenses" });
     }
   });
@@ -123,6 +233,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ message: "Invalid expense data", errors: error.errors });
       } else {
         console.error("Error creating expense:", error);
+        res.status(500).json({ message: "Failed to create expense" });
+      }
+    }
+  });
+
+  // Mobile auth create expense route
+  app.post('/api/mobile/expenses/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const expenseData = insertExpenseSchema.parse({
+        ...req.body,
+        userId
+      });
+
+      const expense = await storage.createExpense(expenseData);
+      res.json(expense);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid expense data", errors: error.errors });
+      } else {
+        console.error("Error creating mobile expense:", error);
         res.status(500).json({ message: "Failed to create expense" });
       }
     }

@@ -45,9 +45,17 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
 
   const category = watch("category");
 
+  // Get mobile auth info
+  const mobileUser = localStorage.getItem("mobileAuthUser");
+  const isMobileAuth = !!mobileUser;
+  const mobileAuthData = mobileUser ? JSON.parse(mobileUser) : null;
+
   const expenseMutation = useMutation({
     mutationFn: async (data: ExpenseForm) => {
-      return apiRequest("POST", "/api/expenses", {
+      const endpoint = isMobileAuth 
+        ? `/api/mobile/expenses/${mobileAuthData?.id}` 
+        : "/api/expenses";
+      return apiRequest("POST", endpoint, {
         amount: parseFloat(data.amount),
         category: data.category,
         description: data.description || "",
@@ -55,8 +63,11 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses/range"] });
+      // Invalidate appropriate cache based on auth type
+      const cacheKey = isMobileAuth 
+        ? [`/api/mobile/expenses/${mobileAuthData?.id}`]
+        : ["/api/expenses"];
+      queryClient.invalidateQueries({ queryKey: cacheKey });
       
       toast({
         title: "Expense Added!",

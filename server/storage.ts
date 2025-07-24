@@ -2,12 +2,15 @@ import {
   users,
   userProfiles,
   expenses,
+  otpVerifications,
   type User,
   type UpsertUser,
   type UserProfile,
   type InsertUserProfile,
   type Expense,
   type InsertExpense,
+  type OtpVerification,
+  type InsertOtp,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte } from "drizzle-orm";
@@ -17,6 +20,8 @@ export interface IStorage {
   // User operations (IMPORTANT) these user operations are mandatory for Replit Auth.
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  getUserByMobile(mobile: string): Promise<User | undefined>;
+  createUserWithMobile(userData: UpsertUser): Promise<User>;
   
   // Profile operations
   getUserProfile(userId: string): Promise<UserProfile | undefined>;
@@ -29,6 +34,10 @@ export interface IStorage {
   getUserExpensesByDateRange(userId: string, startDate: Date, endDate: Date): Promise<Expense[]>;
   getUserExpensesByCategory(userId: string, category: string): Promise<Expense[]>;
   deleteExpense(id: number, userId: string): Promise<boolean>;
+  
+  // OTP operations
+  createOtp(otpData: InsertOtp): Promise<OtpVerification>;
+  verifyOtp(mobile: string, otp: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -134,6 +143,60 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Mobile authentication methods
+  async getUserByMobile(mobile: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.mobile, mobile));
+    return user;
+  }
+
+  async createUserWithMobile(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .returning();
+    return user;
+  }
+
+  // OTP methods
+  async createOtp(otpData: InsertOtp): Promise<OtpVerification> {
+    // Clean up old OTPs for this mobile number
+    await db
+      .delete(otpVerifications)
+      .where(eq(otpVerifications.mobile, otpData.mobile));
+
+    const [otp] = await db
+      .insert(otpVerifications)
+      .values(otpData)
+      .returning();
+    return otp;
+  }
+
+  async verifyOtp(mobile: string, otp: string): Promise<boolean> {
+    const [otpRecord] = await db
+      .select()
+      .from(otpVerifications)
+      .where(
+        and(
+          eq(otpVerifications.mobile, mobile),
+          eq(otpVerifications.otp, otp),
+          eq(otpVerifications.isVerified, "false"),
+          gte(otpVerifications.expiresAt, new Date())
+        )
+      );
+
+    if (!otpRecord) {
+      return false;
+    }
+
+    // Mark as verified
+    await db
+      .update(otpVerifications)
+      .set({ isVerified: "true" })
+      .where(eq(otpVerifications.id, otpRecord.id));
+
+    return true;
   }
 }
 

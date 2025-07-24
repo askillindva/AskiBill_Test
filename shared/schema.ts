@@ -32,8 +32,21 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  mobile: varchar("mobile"), // Mobile number for OTP authentication
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// OTP verification table for mobile authentication
+export const otpVerifications = pgTable("otp_verifications", {
+  id: serial("id").primaryKey(),
+  mobile: varchar("mobile").notNull(),
+  email: varchar("email"),
+  otp: varchar("otp").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  isVerified: text("is_verified").default("false"),
+  attempts: varchar("attempts").default("0"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // User profiles table for financial and personal information
@@ -84,6 +97,12 @@ export const insertExpenseSchema = createInsertSchema(expenses).omit({
   date: z.union([z.string(), z.date()]).transform((val) => val instanceof Date ? val.toISOString().split('T')[0] : val),
 });
 
+// OTP schema
+export const insertOtpSchema = createInsertSchema(otpVerifications).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -91,3 +110,5 @@ export type UserProfile = typeof userProfiles.$inferSelect;
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
 export type Expense = typeof expenses.$inferSelect;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
+export type OtpVerification = typeof otpVerifications.$inferSelect;
+export type InsertOtp = z.infer<typeof insertOtpSchema>;

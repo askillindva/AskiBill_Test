@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,22 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -42,19 +58,24 @@ export default function Dashboard() {
         variant: "destructive",
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        window.location.href = "/";
       }, 500);
       return;
     }
   }, [user, isLoading, toast]);
 
+  // Get mobile auth info
+  const mobileUser = localStorage.getItem("mobileAuthUser");
+  const isMobileAuth = !!mobileUser;
+  const mobileAuthData = mobileUser ? JSON.parse(mobileUser) : null;
+
   const { data: profile } = useQuery<UserProfile>({
-    queryKey: ["/api/profile"],
+    queryKey: isMobileAuth ? [`/api/mobile/profile/${mobileAuthData?.id}`] : ["/api/profile"],
     enabled: !!user,
   });
 
   const { data: expenses = [], refetch: refetchExpenses } = useQuery<Expense[]>({
-    queryKey: ["/api/expenses"],
+    queryKey: isMobileAuth ? [`/api/mobile/expenses/${mobileAuthData?.id}`] : ["/api/expenses"],
     enabled: !!user,
   });
 
@@ -133,26 +154,71 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold text-text-primary">AskiBill</h1>
             </div>
 
-            {/* User Profile */}
+            {/* User Profile Dropdown */}
             <div className="flex items-center space-x-4">
-              <div 
-                className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
-                onClick={() => setShowProfileModal(true)}
-              >
-                <img 
-                  src={(user as User)?.profileImageUrl || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100"} 
-                  alt="User profile" 
-                  className="w-8 h-8 rounded-full object-cover"
-                />
-                <div className="text-left">
-                  <p className="text-sm font-medium text-text-primary">
-                    {(user as User)?.firstName || "User"} {(user as User)?.lastName || ""}
-                  </p>
-                  <p className="text-xs text-text-secondary">{(user as User)?.email}</p>
+              <div className="relative" ref={userMenuRef}>
+                <div 
+                  className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                >
+                  <img 
+                    src={(user as User)?.profileImageUrl || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100"} 
+                    alt="User profile" 
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-text-primary">
+                      {(user as User)?.firstName || "User"} {(user as User)?.lastName || ""}
+                    </p>
+                    <p className="text-xs text-text-secondary">
+                      {(user as User)?.email || (user as User)?.mobile || "User"}
+                    </p>
+                  </div>
+                  <svg className="w-4 h-4 text-text-secondary" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/>
+                  </svg>
                 </div>
-                <svg className="w-4 h-4 text-text-secondary" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/>
-                </svg>
+
+                {/* Dropdown Menu */}
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setShowProfileModal(true);
+                          setShowUserMenu(false);
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <svg className="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
+                        </svg>
+                        Edit Profile
+                      </button>
+                      <div className="border-t border-gray-100"></div>
+                      <button
+                        onClick={() => {
+                          // Check if mobile auth user
+                          const mobileUser = localStorage.getItem("mobileAuthUser");
+                          if (mobileUser) {
+                            // Mobile auth logout
+                            localStorage.removeItem("mobileAuthUser");
+                            window.location.href = "/";
+                          } else {
+                            // Replit auth logout
+                            window.location.href = "/api/logout";
+                          }
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        <svg className="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd"/>
+                        </svg>
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

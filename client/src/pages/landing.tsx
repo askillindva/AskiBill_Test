@@ -1,9 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useLocation } from "wouter";
 
 export default function Landing() {
+  const [, setLocation] = useLocation();
+  
   const handleLogin = () => {
     window.location.href = "/api/login";
+  };
+
+  const handleAuthPage = () => {
+    setLocation("/auth");
   };
 
   return (
@@ -58,13 +65,26 @@ export default function Landing() {
                 </div>
               </div>
 
-              <Button 
-                onClick={handleLogin}
-                className="w-full bg-primary hover:bg-primary-dark text-white font-medium py-3 px-4 rounded-lg transition-all duration-200"
-                size="lg"
-              >
-                Sign In to Get Started
-              </Button>
+              <div className="space-y-3">
+                <Button 
+                  onClick={handleAuthPage}
+                  className="w-full bg-primary hover:bg-primary-dark text-white font-medium py-3 px-4 rounded-lg transition-all duration-200"
+                  size="lg"
+                >
+                  Sign In with Mobile/Email
+                </Button>
+                <Button 
+                  onClick={handleLogin}
+                  variant="outline"
+                  className="w-full font-medium py-3 px-4 rounded-lg transition-all duration-200"
+                  size="lg"
+                >
+                  Continue with Replit
+                </Button>
+                <p className="text-xs text-center text-text-secondary">
+                  New users will automatically create an account
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
