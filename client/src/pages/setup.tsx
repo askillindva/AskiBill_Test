@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const setupSchema = z.object({
   monthlyNetSalary: z.string().min(1, "Monthly net salary is required"),
@@ -46,11 +46,18 @@ export default function Setup() {
       });
     },
     onSuccess: () => {
+      // Invalidate profile cache to trigger re-fetch
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      
       toast({
         title: "Setup Complete!",
         description: "Your financial profile has been saved successfully.",
       });
-      setLocation("/");
+      
+      // Small delay to ensure cache invalidation completes
+      setTimeout(() => {
+        setLocation("/");
+      }, 100);
     },
     onError: (error) => {
       toast({

@@ -4,15 +4,16 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const expenseSchema = z.object({
-  amount: z.string().min(1, "Amount is required").refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, "Amount must be a positive number"),
+  amount: z.string().min(1, "Amount is required"),
   category: z.string().min(1, "Category is required"),
   description: z.string().optional(),
   date: z.string().min(1, "Date is required"),
@@ -23,27 +24,17 @@ type ExpenseForm = z.infer<typeof expenseSchema>;
 interface ExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onExpenseAdded: () => void;
 }
 
-const categories = [
-  { id: "food", name: "Food", icon: "🍽️", color: "bg-primary/10 text-primary" },
-  { id: "transport", name: "Transport", icon: "🚗", color: "bg-secondary/10 text-secondary" },
-  { id: "shopping", name: "Shopping", icon: "🛒", color: "bg-accent/10 text-accent" },
-  { id: "entertainment", name: "Entertainment", icon: "🎬", color: "bg-error/10 text-error" },
-  { id: "health", name: "Health", icon: "❤️", color: "bg-success/10 text-success" },
-  { id: "other", name: "Other", icon: "📝", color: "bg-text-secondary/10 text-text-secondary" },
-];
-
-export default function ExpenseModal({ isOpen, onClose, onExpenseAdded }: ExpenseModalProps) {
+export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
   const { toast } = useToast();
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
 
   const {
     register,
     handleSubmit,
-    reset,
     setValue,
+    watch,
+    reset,
     formState: { errors },
   } = useForm<ExpenseForm>({
     resolver: zodResolver(expenseSchema),
@@ -51,6 +42,8 @@ export default function ExpenseModal({ isOpen, onClose, onExpenseAdded }: Expens
       date: new Date().toISOString().split('T')[0],
     },
   });
+
+  const category = watch("category");
 
   const expenseMutation = useMutation({
     mutationFn: async (data: ExpenseForm) => {
@@ -62,39 +55,25 @@ export default function ExpenseModal({ isOpen, onClose, onExpenseAdded }: Expens
       });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses/range"] });
+      
       toast({
         title: "Expense Added!",
-        description: "Your expense has been saved successfully.",
+        description: "Your expense has been recorded successfully.",
       });
+      
       reset();
-      setSelectedCategory("");
-      onExpenseAdded();
       onClose();
     },
     onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
       toast({
         title: "Failed to Add Expense",
-        description: error.message || "Failed to save expense. Please try again.",
+        description: error.message || "Please try again.",
         variant: "destructive",
       });
     },
   });
-
-  const handleCategorySelect = (categoryId: string) => {
-    setSelectedCategory(categoryId);
-    setValue("category", categoryId);
-  };
 
   const onSubmit = (data: ExpenseForm) => {
     expenseMutation.mutate(data);
@@ -102,18 +81,29 @@ export default function ExpenseModal({ isOpen, onClose, onExpenseAdded }: Expens
 
   const handleClose = () => {
     reset();
-    setSelectedCategory("");
     onClose();
   };
 
+  const categories = [
+    { value: "food", label: "🍽️ Food & Dining", color: "bg-orange-100 text-orange-800" },
+    { value: "transport", label: "🚗 Transportation", color: "bg-blue-100 text-blue-800" },
+    { value: "shopping", label: "🛍️ Shopping", color: "bg-purple-100 text-purple-800" },
+    { value: "entertainment", label: "🎬 Entertainment", color: "bg-pink-100 text-pink-800" },
+    { value: "bills", label: "💡 Bills & Utilities", color: "bg-yellow-100 text-yellow-800" },
+    { value: "healthcare", label: "🏥 Healthcare", color: "bg-red-100 text-red-800" },
+    { value: "education", label: "📚 Education", color: "bg-green-100 text-green-800" },
+    { value: "other", label: "📦 Other", color: "bg-gray-100 text-gray-800" },
+  ];
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add New Expense</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-text-primary">Add New Expense</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Amount */}
           <div className="space-y-2">
             <Label htmlFor="amount">Amount</Label>
             <div className="relative">
@@ -122,8 +112,8 @@ export default function ExpenseModal({ isOpen, onClose, onExpenseAdded }: Expens
                 id="amount"
                 type="number"
                 step="0.01"
-                placeholder="0.00"
-                className="pl-8 text-lg font-medium"
+                placeholder="100.00"
+                className="pl-8"
                 {...register("amount")}
               />
             </div>
@@ -132,39 +122,27 @@ export default function ExpenseModal({ isOpen, onClose, onExpenseAdded }: Expens
             )}
           </div>
 
+          {/* Category */}
           <div className="space-y-2">
-            <Label>Category</Label>
-            <div className="grid grid-cols-3 gap-3">
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => handleCategorySelect(category.id)}
-                  className={`p-3 border rounded-lg hover:border-primary hover:bg-primary/5 transition-all text-center ${
-                    selectedCategory === category.id
-                      ? "border-primary bg-primary/10"
-                      : "border-gray-200"
-                  }`}
-                >
-                  <div className="text-lg mb-2">{category.icon}</div>
-                  <p className="text-xs font-medium text-text-primary">{category.name}</p>
-                </button>
-              ))}
-            </div>
+            <Label htmlFor="category">Category</Label>
+            <Select value={category} onValueChange={(value) => setValue("category", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {errors.category && (
               <p className="text-sm text-error">{errors.category.message}</p>
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Input
-              id="description"
-              placeholder="What was this expense for?"
-              {...register("description")}
-            />
-          </div>
-
+          {/* Date */}
           <div className="space-y-2">
             <Label htmlFor="date">Date</Label>
             <Input
@@ -177,18 +155,29 @@ export default function ExpenseModal({ isOpen, onClose, onExpenseAdded }: Expens
             )}
           </div>
 
-          <div className="flex space-x-4 pt-4">
-            <Button type="button" variant="outline" className="flex-1" onClick={handleClose}>
+          {/* Description */}
+          <div className="space-y-2">
+            <Label htmlFor="description">Description (Optional)</Label>
+            <Textarea
+              id="description"
+              placeholder="Brief description of the expense..."
+              className="min-h-[80px]"
+              {...register("description")}
+            />
+          </div>
+
+          <DialogFooter className="flex gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
             <Button 
               type="submit" 
-              className="flex-1 bg-primary hover:bg-primary-dark"
               disabled={expenseMutation.isPending}
+              className="bg-primary hover:bg-primary/90"
             >
-              {expenseMutation.isPending ? "Saving..." : "Save Expense"}
+              {expenseMutation.isPending ? "Adding..." : "Add Expense"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
