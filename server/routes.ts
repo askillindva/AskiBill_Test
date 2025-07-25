@@ -32,7 +32,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate 6-digit OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes for easier testing
 
       // Save OTP to database
       await storage.createOtp({
