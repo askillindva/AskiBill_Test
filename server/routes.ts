@@ -189,6 +189,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Financial institutions API
+  app.get('/api/financial-institutions', async (req, res) => {
+    try {
+      const { country = 'IN', search, accountType } = req.query;
+      const { bankApiService } = await import('./bankApiService');
+      
+      let institutions = await bankApiService.getSupportedInstitutions(country as string);
+      
+      if (search) {
+        institutions = await bankApiService.searchInstitutions(search as string, country as string);
+      }
+      
+      if (accountType) {
+        institutions = institutions.filter(inst => 
+          inst.supportedAccounts.includes(accountType as string)
+        );
+      }
+      
+      res.json(institutions);
+    } catch (error) {
+      console.error("Error fetching financial institutions:", error);
+      res.status(500).json({ message: "Failed to fetch financial institutions" });
+    }
+  });
+
+  app.post('/api/bank-connection/initiate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { institutionId } = req.body;
+      
+      const { bankApiService } = await import('./bankApiService');
+      const result = await bankApiService.connectBank(userId, institutionId);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error initiating bank connection:", error);
+      res.status(500).json({ message: "Failed to initiate bank connection" });
+    }
+  });
+
+  app.get('/api/bank-connection/status/:consentId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { consentId } = req.params;
+      
+      const { bankApiService } = await import('./bankApiService');
+      const result = await bankApiService.getConnectionStatus(consentId);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error checking bank connection status:", error);
+      res.status(500).json({ message: "Failed to check connection status" });
+    }
+  });
+
+  app.get('/api/bank-connection/data/:consentId/:accountId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { consentId, accountId } = req.params;
+      
+      const { bankApiService } = await import('./bankApiService');
+      const result = await bankApiService.getAccountData(consentId, accountId);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching bank connection data:", error);
+      res.status(500).json({ message: "Failed to fetch account data" });
+    }
+  });
+
   // Mobile bank account routes
   app.post('/api/mobile/bank-accounts/:userId', async (req, res) => {
     try {

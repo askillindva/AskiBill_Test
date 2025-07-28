@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -37,6 +38,16 @@ const accountTypes = [
   { value: "loan", label: "Loan Account" },
 ];
 
+interface FinancialInstitution {
+  id: string;
+  name: string;
+  type: string;
+  primaryColor: string;
+  supportedAccounts: string[];
+  apiProvider?: string;
+  requiresOAuth: boolean;
+}
+
 const popularBanks = [
   "State Bank of India", "HDFC Bank", "ICICI Bank", "Axis Bank", "Kotak Mahindra Bank",
   "Punjab National Bank", "Bank of Baroda", "Canara Bank", "Union Bank of India",
@@ -47,6 +58,9 @@ export default function AddBankAccountModal({ isOpen, onClose, onSuccess }: AddB
   const { toast } = useToast();
   const [connectToBank, setConnectToBank] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [selectedBank, setSelectedBank] = useState<FinancialInstitution | null>(null);
+  const [searchBank, setSearchBank] = useState("");
+  const [showBankList, setShowBankList] = useState(false);
 
   const {
     register,
@@ -109,28 +123,70 @@ export default function AddBankAccountModal({ isOpen, onClose, onSuccess }: AddB
     },
   });
 
-  const handleConnectToBank = async () => {
-    if (!bankName || !accountType) {
+  // Fetch financial institutions
+  const { data: financialInstitutions = [], isLoading: institutionsLoading } = useQuery({
+    queryKey: ['/api/financial-institutions', searchBank],
+    queryFn: () => {
+      const params = new URLSearchParams({ country: 'IN' });
+      if (searchBank) params.append('search', searchBank);
+      return fetch(`/api/financial-institutions?${params}`).then(r => r.json());
+    },
+    enabled: showBankList,
+  });
+
+  // Filter institutions by search and account type
+  const filteredInstitutions = financialInstitutions.filter((inst: FinancialInstitution) => {
+    const matchesSearch = !searchBank || inst.name.toLowerCase().includes(searchBank.toLowerCase());
+    const matchesAccountType = !accountType || inst.supportedAccounts.includes(accountType);
+    return matchesSearch && matchesAccountType;
+  });
+
+  // Bank connection mutation
+  const bankConnectionMutation = useMutation({
+    mutationFn: async (institutionId: string) => {
+      return await apiRequest("POST", '/api/bank-connection/initiate', {
+        institutionId,
+      });
+    },
+    onSuccess: (data) => {
       toast({
-        title: "Missing Information",
-        description: "Please select bank name and account type first",
+        title: "Bank Connection Initiated",
+        description: "Redirecting to your bank for authentication...",
+      });
+      // Open bank authentication in new window
+      window.open(data.redirectUrl, '_blank', 'width=600,height=700');
+      setIsConnecting(false);
+      onClose();
+    },
+    onError: (error) => {
+      toast({
+        title: "Connection Failed",
+        description: "Failed to connect to your bank. Please try again.",
+        variant: "destructive",
+      });
+      setIsConnecting(false);
+    },
+  });
+
+  const handleConnectToBank = async () => {
+    if (!selectedBank) {
+      toast({
+        title: "No Bank Selected",
+        description: "Please select a bank to connect to",
         variant: "destructive",
       });
       return;
     }
 
     setIsConnecting(true);
-    
-    // Simulate bank connection process
-    setTimeout(() => {
-      toast({
-        title: "Bank Connection",
-        description: "Bank connection feature will be available soon. For now, please enter details manually.",
-        variant: "default",
-      });
-      setIsConnecting(false);
-      setConnectToBank(false);
-    }, 2000);
+    await bankConnectionMutation.mutateAsync(selectedBank.id);
+  };
+
+  const handleBankSelect = (institution: FinancialInstitution) => {
+    setSelectedBank(institution);
+    setValue("bankName", institution.name);
+    setShowBankList(false);
+    setSearchBank("");
   };
 
   const onSubmit = (data: BankAccountForm) => {
@@ -174,19 +230,69 @@ export default function AddBankAccountModal({ isOpen, onClose, onSuccess }: AddB
           {/* Bank Name */}
           <div className="space-y-2">
             <Label htmlFor="bankName">Bank Name</Label>
-            <Select onValueChange={(value) => setValue("bankName", value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select your bank" />
-              </SelectTrigger>
-              <SelectContent>
-                {popularBanks.map((bank) => (
-                  <SelectItem key={bank} value={bank}>
-                    {bank}
-                  </SelectItem>
-                ))}
-                <SelectItem value="other">Other Bank</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Search or select your bank"
+                  value={selectedBank?.name || searchBank}
+                  onChange={(e) => {
+                    setSearchBank(e.target.value);
+                    setShowBankList(true);
+                  }}
+                  onFocus={() => setShowBankList(true)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowBankList(!showBankList)}
+                  className="px-3"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </Button>
+              </div>
+              
+              {showBankList && (
+                <div className="border rounded-md max-h-60 overflow-y-auto bg-background">
+                  {institutionsLoading ? (
+                    <div className="p-4 text-center text-muted-foreground">Loading banks...</div>
+                  ) : filteredInstitutions.length > 0 ? (
+                    filteredInstitutions.map((institution) => (
+                      <div
+                        key={institution.id}
+                        className="p-3 hover:bg-accent cursor-pointer border-b last:border-b-0 flex items-center justify-between"
+                        onClick={() => handleBankSelect(institution)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                            style={{ backgroundColor: institution.primaryColor }}
+                          >
+                            {institution.name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-medium">{institution.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {institution.supportedAccounts.join(", ")}
+                            </div>
+                          </div>
+                        </div>
+                        {institution.apiProvider && (
+                          <Badge variant="secondary" className="text-xs">
+                            {institution.apiProvider}
+                          </Badge>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-muted-foreground">
+                      {searchBank ? "No banks found" : "Start typing to search banks"}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             {errors.bankName && (
               <p className="text-sm text-red-600">{errors.bankName.message}</p>
             )}

@@ -257,7 +257,7 @@ export class DatabaseStorage implements IStorage {
       .update(bankAccounts)
       .set({ isActive: "false", updatedAt: new Date() })
       .where(and(eq(bankAccounts.id, id), eq(bankAccounts.userId, userId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Bank transaction operations
