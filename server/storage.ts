@@ -3,6 +3,8 @@ import {
   userProfiles,
   expenses,
   otpVerifications,
+  bankAccounts,
+  bankTransactions,
   type User,
   type UpsertUser,
   type UserProfile,
@@ -11,6 +13,10 @@ import {
   type InsertExpense,
   type OtpVerification,
   type InsertOtp,
+  type BankAccount,
+  type InsertBankAccount,
+  type BankTransaction,
+  type InsertBankTransaction,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte } from "drizzle-orm";
@@ -38,6 +44,18 @@ export interface IStorage {
   // OTP operations
   createOtp(otpData: InsertOtp): Promise<OtpVerification>;
   verifyOtp(mobile: string, otp: string): Promise<boolean>;
+  
+  // Bank account operations
+  createBankAccount(account: InsertBankAccount): Promise<BankAccount>;
+  getUserBankAccounts(userId: string): Promise<BankAccount[]>;
+  getBankAccount(id: number, userId: string): Promise<BankAccount | undefined>;
+  updateBankAccount(id: number, userId: string, account: Partial<InsertBankAccount>): Promise<BankAccount>;
+  deleteBankAccount(id: number, userId: string): Promise<boolean>;
+  
+  // Bank transaction operations
+  createBankTransaction(transaction: InsertBankTransaction): Promise<BankTransaction>;
+  getBankAccountTransactions(bankAccountId: number): Promise<BankTransaction[]>;
+  getUserBankTransactions(userId: string): Promise<BankTransaction[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -197,6 +215,86 @@ export class DatabaseStorage implements IStorage {
       .where(eq(otpVerifications.id, otpRecord.id));
 
     return true;
+  }
+
+  // Bank account operations
+  async createBankAccount(account: InsertBankAccount): Promise<BankAccount> {
+    const [bankAccount] = await db
+      .insert(bankAccounts)
+      .values(account)
+      .returning();
+    return bankAccount;
+  }
+
+  async getUserBankAccounts(userId: string): Promise<BankAccount[]> {
+    return await db
+      .select()
+      .from(bankAccounts)
+      .where(and(eq(bankAccounts.userId, userId), eq(bankAccounts.isActive, "true")))
+      .orderBy(desc(bankAccounts.createdAt));
+  }
+
+  async getBankAccount(id: number, userId: string): Promise<BankAccount | undefined> {
+    const [account] = await db
+      .select()
+      .from(bankAccounts)
+      .where(and(eq(bankAccounts.id, id), eq(bankAccounts.userId, userId)))
+      .limit(1);
+    return account;
+  }
+
+  async updateBankAccount(id: number, userId: string, account: Partial<InsertBankAccount>): Promise<BankAccount> {
+    const [updatedAccount] = await db
+      .update(bankAccounts)
+      .set({ ...account, updatedAt: new Date() })
+      .where(and(eq(bankAccounts.id, id), eq(bankAccounts.userId, userId)))
+      .returning();
+    return updatedAccount;
+  }
+
+  async deleteBankAccount(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .update(bankAccounts)
+      .set({ isActive: "false", updatedAt: new Date() })
+      .where(and(eq(bankAccounts.id, id), eq(bankAccounts.userId, userId)));
+    return result.rowCount > 0;
+  }
+
+  // Bank transaction operations
+  async createBankTransaction(transaction: InsertBankTransaction): Promise<BankTransaction> {
+    const [bankTransaction] = await db
+      .insert(bankTransactions)
+      .values(transaction)
+      .returning();
+    return bankTransaction;
+  }
+
+  async getBankAccountTransactions(bankAccountId: number): Promise<BankTransaction[]> {
+    return await db
+      .select()
+      .from(bankTransactions)
+      .where(eq(bankTransactions.bankAccountId, bankAccountId))
+      .orderBy(desc(bankTransactions.date));
+  }
+
+  async getUserBankTransactions(userId: string): Promise<BankTransaction[]> {
+    return await db
+      .select({
+        id: bankTransactions.id,
+        bankAccountId: bankTransactions.bankAccountId,
+        transactionId: bankTransactions.transactionId,
+        amount: bankTransactions.amount,
+        transactionType: bankTransactions.transactionType,
+        description: bankTransactions.description,
+        category: bankTransactions.category,
+        date: bankTransactions.date,
+        balance: bankTransactions.balance,
+        createdAt: bankTransactions.createdAt,
+      })
+      .from(bankTransactions)
+      .innerJoin(bankAccounts, eq(bankTransactions.bankAccountId, bankAccounts.id))
+      .where(eq(bankAccounts.userId, userId))
+      .orderBy(desc(bankTransactions.date));
   }
 }
 

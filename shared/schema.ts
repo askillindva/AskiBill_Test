@@ -65,6 +65,39 @@ export const userProfiles = pgTable("user_profiles", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Bank accounts table
+export const bankAccounts = pgTable("bank_accounts", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  accountType: varchar("account_type").notNull(), // 'savings', 'checking', 'credit_card', 'loan'
+  bankName: varchar("bank_name").notNull(),
+  accountNumber: varchar("account_number").notNull(),
+  accountHolderName: varchar("account_holder_name").notNull(),
+  currentBalance: decimal("current_balance", { precision: 12, scale: 2 }).notNull(),
+  creditLimit: decimal("credit_limit", { precision: 12, scale: 2 }), // For credit cards
+  interestRate: decimal("interest_rate", { precision: 5, scale: 2 }), // For loans/savings
+  isActive: text("is_active").default("true"),
+  lastSyncedAt: timestamp("last_synced_at"),
+  apiIntegrationId: varchar("api_integration_id"), // For bank API connections
+  encryptedCredentials: text("encrypted_credentials"), // Encrypted bank credentials
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Bank transactions table for detailed transaction history
+export const bankTransactions = pgTable("bank_transactions", {
+  id: serial("id").primaryKey(),
+  bankAccountId: serial("bank_account_id").notNull().references(() => bankAccounts.id),
+  transactionId: varchar("transaction_id").notNull(), // Bank's transaction ID
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  transactionType: varchar("transaction_type").notNull(), // 'credit', 'debit'
+  description: text("description"),
+  category: varchar("category"),
+  date: date("date").notNull(),
+  balance: decimal("balance", { precision: 12, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Expenses table
 export const expenses = pgTable("expenses", {
   id: serial("id").primaryKey(),
@@ -106,6 +139,11 @@ export const insertOtpSchema = createInsertSchema(otpVerifications).omit({
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+export type BankAccount = typeof bankAccounts.$inferSelect;
+export type InsertBankAccount = typeof bankAccounts.$inferInsert;
+export type BankTransaction = typeof bankTransactions.$inferSelect;
+export type InsertBankTransaction = typeof bankTransactions.$inferInsert;
 export type UserProfile = typeof userProfiles.$inferSelect;
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
 export type Expense = typeof expenses.$inferSelect;

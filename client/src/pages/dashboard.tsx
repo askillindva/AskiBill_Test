@@ -9,6 +9,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import ExpenseModal from "@/components/ExpenseModal";
 import ProfileModal from "@/components/ProfileModal";
 import MonthlySummary from "@/components/MonthlySummary";
+import BankingSummary from "@/components/BankingSummary";
 import type { UserProfile, Expense, User } from "@shared/schema";
 
 const categoryIcons: Record<string, string> = {
@@ -321,7 +322,7 @@ export default function Dashboard() {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8">
+          <TabsList className="grid w-full grid-cols-4 mb-8">
             <TabsTrigger value="overview" className="text-sm font-medium">
               <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
@@ -340,6 +341,12 @@ export default function Dashboard() {
                 <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"/>
               </svg>
               Annual View
+            </TabsTrigger>
+            <TabsTrigger value="banking" className="text-sm font-medium">
+              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM8 13a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
+              </svg>
+              Banking Summary
             </TabsTrigger>
           </TabsList>
 
@@ -451,6 +458,10 @@ export default function Dashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="banking" className="space-y-6">
+            <BankingSummary userId={(user as User)?.id} />
           </TabsContent>
         </Tabs>
       </main>

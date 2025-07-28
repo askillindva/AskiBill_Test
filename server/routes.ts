@@ -106,6 +106,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bank account routes
+  app.post('/api/bank-accounts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { accountType, bankName, accountNumber, accountHolderName, currentBalance, creditLimit, interestRate, connectToBank } = req.body;
+      
+      const bankAccount = await storage.createBankAccount({
+        userId,
+        accountType,
+        bankName,
+        accountNumber,
+        accountHolderName,
+        currentBalance: currentBalance.toString(),
+        creditLimit: creditLimit ? creditLimit.toString() : null,
+        interestRate: interestRate ? interestRate.toString() : null,
+        lastSyncedAt: connectToBank ? new Date() : null,
+      });
+      
+      res.json(bankAccount);
+    } catch (error) {
+      console.error("Error creating bank account:", error);
+      res.status(500).json({ message: "Failed to create bank account" });
+    }
+  });
+
+  app.get('/api/bank-accounts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const bankAccounts = await storage.getUserBankAccounts(userId);
+      res.json(bankAccounts);
+    } catch (error) {
+      console.error("Error fetching bank accounts:", error);
+      res.status(500).json({ message: "Failed to fetch bank accounts" });
+    }
+  });
+
+  app.get('/api/bank-accounts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const accountId = parseInt(req.params.id);
+      const bankAccount = await storage.getBankAccount(accountId, userId);
+      
+      if (!bankAccount) {
+        return res.status(404).json({ message: "Bank account not found" });
+      }
+      
+      res.json(bankAccount);
+    } catch (error) {
+      console.error("Error fetching bank account:", error);
+      res.status(500).json({ message: "Failed to fetch bank account" });
+    }
+  });
+
+  app.get('/api/bank-transactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transactions = await storage.getUserBankTransactions(userId);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching bank transactions:", error);
+      res.status(500).json({ message: "Failed to fetch bank transactions" });
+    }
+  });
+
+  app.get('/api/bank-transactions/:accountId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const accountId = parseInt(req.params.accountId);
+      
+      // Verify the account belongs to the user
+      const bankAccount = await storage.getBankAccount(accountId, userId);
+      if (!bankAccount) {
+        return res.status(404).json({ message: "Bank account not found" });
+      }
+      
+      const transactions = await storage.getBankAccountTransactions(accountId);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching bank account transactions:", error);
+      res.status(500).json({ message: "Failed to fetch bank account transactions" });
+    }
+  });
+
+  // Mobile bank account routes
+  app.post('/api/mobile/bank-accounts/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { accountType, bankName, accountNumber, accountHolderName, currentBalance, creditLimit, interestRate, connectToBank } = req.body;
+      
+      const bankAccount = await storage.createBankAccount({
+        userId,
+        accountType,
+        bankName,
+        accountNumber,
+        accountHolderName,
+        currentBalance: currentBalance.toString(),
+        creditLimit: creditLimit ? creditLimit.toString() : null,
+        interestRate: interestRate ? interestRate.toString() : null,
+        lastSyncedAt: connectToBank ? new Date() : null,
+      });
+      
+      res.json(bankAccount);
+    } catch (error) {
+      console.error("Error creating mobile bank account:", error);
+      res.status(500).json({ message: "Failed to create bank account" });
+    }
+  });
+
+  app.get('/api/mobile/bank-accounts/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const bankAccounts = await storage.getUserBankAccounts(userId);
+      res.json(bankAccounts);
+    } catch (error) {
+      console.error("Error fetching mobile bank accounts:", error);
+      res.status(500).json({ message: "Failed to fetch bank accounts" });
+    }
+  });
+
+  app.get('/api/mobile/bank-transactions/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const transactions = await storage.getUserBankTransactions(userId);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching mobile bank transactions:", error);
+      res.status(500).json({ message: "Failed to fetch bank transactions" });
+    }
+  });
+
+  app.get('/api/mobile/bank-transactions/:userId/:accountId', async (req, res) => {
+    try {
+      const { userId, accountId } = req.params;
+      const accountIdNum = parseInt(accountId);
+      
+      // Verify the account belongs to the user
+      const bankAccount = await storage.getBankAccount(accountIdNum, userId);
+      if (!bankAccount) {
+        return res.status(404).json({ message: "Bank account not found" });
+      }
+      
+      const transactions = await storage.getBankAccountTransactions(accountIdNum);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching mobile bank account transactions:", error);
+      res.status(500).json({ message: "Failed to fetch bank account transactions" });
+    }
+  });
+
   // Profile routes
   app.get('/api/profile', isAuthenticated, async (req: any, res) => {
     try {
