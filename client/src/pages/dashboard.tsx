@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import ExpenseModal from "@/components/ExpenseModal";
 import ProfileModal from "@/components/ProfileModal";
+import MonthlySummary from "@/components/MonthlySummary";
 import type { UserProfile, Expense, User } from "@shared/schema";
 
 const categoryIcons: Record<string, string> = {
@@ -33,6 +35,7 @@ export default function Dashboard() {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Close user menu when clicking outside
@@ -302,158 +305,161 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Main Action Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary"
+        {/* Quick Action Button */}
+        <div className="flex justify-center mb-8">
+          <Button 
             onClick={() => setShowExpenseModal(true)}
+            size="lg"
+            className="px-8 py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
           >
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"/>
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-text-primary mb-2">Enter an Expense</h3>
-                <p className="text-sm text-text-secondary">Quickly add your daily expenses</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-md transition-all duration-200 hover:border-secondary">
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-secondary" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-text-primary mb-2">Monthly Overview</h3>
-                <p className="text-sm text-text-secondary">View this month's expenses</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-md transition-all duration-200 hover:border-accent">
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-accent" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"/>
-                    <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"/>
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-text-primary mb-2">Annual Overview</h3>
-                <p className="text-sm text-text-secondary">View yearly expenses (Apr-Mar)</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-md transition-all duration-200 hover:border-error">
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-error/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-error" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                    <path fillRule="evenodd" d="M4 5a2 2 0 012-2v1a2 2 0 002 2h4a2 2 0 002-2V3a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/>
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-text-primary mb-2">Financial Summary</h3>
-                <p className="text-sm text-text-secondary">Complete financial insights</p>
-              </div>
-            </CardContent>
-          </Card>
+            <svg className="w-6 h-6 mr-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"/>
+            </svg>
+            Add New Expense
+          </Button>
         </div>
 
-        {/* Recent Expenses and Category Breakdown */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent Expenses List */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-text-primary">Recent Expenses</h3>
-                  <Button variant="ghost" size="sm" className="text-primary hover:text-primary-dark">
-                    View All
-                  </Button>
-                </div>
-                
-                <div className="space-y-4">
-                  {expenses.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-text-secondary">No expenses recorded yet.</p>
-                      <Button 
-                        onClick={() => setShowExpenseModal(true)}
-                        className="mt-4"
-                        size="sm"
-                      >
-                        Add Your First Expense
+        {/* Main Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
+            <TabsTrigger value="overview" className="text-sm font-medium">
+              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+              </svg>
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="monthly" className="text-sm font-medium">
+              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+              </svg>
+              Monthly Summary
+            </TabsTrigger>
+            <TabsTrigger value="annual" className="text-sm font-medium">
+              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"/>
+                <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"/>
+              </svg>
+              Annual View
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            {/* Recent Expenses and Category Breakdown */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Recent Expenses List */}
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold text-text-primary">Recent Expenses</h3>
+                      <Button variant="ghost" size="sm" className="text-primary hover:text-primary-dark">
+                        View All
                       </Button>
                     </div>
-                  ) : (
-                    expenses.slice(0, 5).map((expense) => (
-                      <div key={expense.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-4">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${categoryColors[expense.category] || categoryColors.other}`}>
-                            <span className="text-lg">{categoryIcons[expense.category] || categoryIcons.other}</span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-text-primary">{expense.description || "Expense"}</p>
-                            <p className="text-sm text-text-secondary capitalize">{expense.category.replace('-', ' ')}</p>
-                          </div>
+                    
+                    <div className="space-y-4">
+                      {expenses.length === 0 ? (
+                        <div className="text-center py-8">
+                          <p className="text-text-secondary">No expenses recorded yet.</p>
+                          <Button 
+                            onClick={() => setShowExpenseModal(true)}
+                            className="mt-4"
+                            size="sm"
+                          >
+                            Add Your First Expense
+                          </Button>
                         </div>
-                        <div className="text-right">
-                          <p className="font-medium text-text-primary">₹{parseFloat(expense.amount).toLocaleString()}</p>
-                          <p className="text-sm text-text-secondary">
-                            {new Date(expense.date).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                      ) : (
+                        expenses.slice(0, 5).map((expense) => (
+                          <div key={expense.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div className="flex items-center space-x-4">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${categoryColors[expense.category] || categoryColors.other}`}>
+                                <span className="text-lg">{categoryIcons[expense.category] || categoryIcons.other}</span>
+                              </div>
+                              <div>
+                                <p className="font-medium text-text-primary">{expense.description || "Expense"}</p>
+                                <p className="text-sm text-text-secondary capitalize">{expense.category.replace('-', ' ')}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium text-text-primary">₹{parseFloat(expense.amount).toLocaleString()}</p>
+                              <p className="text-sm text-text-secondary">
+                                {new Date(expense.date).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-          {/* Category Breakdown */}
-          <div>
+              {/* Category Breakdown */}
+              <div>
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-semibold text-text-primary mb-6">Category Breakdown</h3>
+                    
+                    <div className="space-y-4">
+                      {categoryBreakdown.length === 0 ? (
+                        <p className="text-text-secondary text-center py-4">No expenses this month</p>
+                      ) : (
+                        categoryBreakdown.map(({ category, amount, percentage }) => (
+                          <div key={category} className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${categoryColors[category] || categoryColors.other}`}>
+                                <span>{categoryIcons[category] || categoryIcons.other}</span>
+                              </div>
+                              <div>
+                                <p className="font-medium text-text-primary capitalize">{category.replace('-', ' ')}</p>
+                                <p className="text-xs text-text-secondary">{percentage}%</p>
+                              </div>
+                            </div>
+                            <p className="font-medium text-text-primary">₹{amount.toLocaleString()}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="monthly" className="space-y-6">
+            <MonthlySummary expenses={expenses} profile={profile} />
+          </TabsContent>
+
+          <TabsContent value="annual" className="space-y-6">
             <Card>
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-text-primary mb-6">Category Breakdown</h3>
-                
-                <div className="space-y-4">
-                  {categoryBreakdown.length === 0 ? (
-                    <p className="text-text-secondary text-center py-4">No expenses this month</p>
-                  ) : (
-                    categoryBreakdown.map(({ category, amount, percentage }) => (
-                      <div key={category} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${categoryColors[category] || categoryColors.other}`}>
-                            <span>{categoryIcons[category] || categoryIcons.other}</span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-text-primary capitalize">{category.replace('-', ' ')}</p>
-                            <p className="text-xs text-text-secondary">{percentage}%</p>
-                          </div>
-                        </div>
-                        <p className="font-medium text-text-primary">₹{amount.toLocaleString()}</p>
-                      </div>
-                    ))
-                  )}
+              <CardContent className="p-8">
+                <div className="text-center">
+                  <h3 className="text-2xl font-bold text-text-primary mb-4">Annual Overview</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <p className="text-lg text-text-secondary mb-2">Total Annual Expenses</p>
+                      <p className="text-4xl font-bold text-primary">₹{annualTotal.toLocaleString()}</p>
+                      <p className="text-sm text-text-secondary mt-2">April {fiscalYearStart.getFullYear()} - March {fiscalYearEnd.getFullYear()}</p>
+                    </div>
+                    <div>
+                      <p className="text-lg text-text-secondary mb-2">Monthly Average</p>
+                      <p className="text-4xl font-bold text-secondary">₹{(annualTotal / 12).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+                      <p className="text-sm text-text-secondary mt-2">Based on fiscal year</p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Modals */}
       <ExpenseModal 
         isOpen={showExpenseModal} 
         onClose={() => setShowExpenseModal(false)}
-        onExpenseAdded={() => refetchExpenses()}
+        onSuccess={() => refetchExpenses()}
       />
       <ProfileModal 
         isOpen={showProfileModal} 

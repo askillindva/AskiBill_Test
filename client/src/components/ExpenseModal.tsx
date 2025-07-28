@@ -24,9 +24,10 @@ type ExpenseForm = z.infer<typeof expenseSchema>;
 interface ExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
+export default function ExpenseModal({ isOpen, onClose, onSuccess }: ExpenseModalProps) {
   const { toast } = useToast();
 
   const {
@@ -73,6 +74,11 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
         title: "Expense Added!",
         description: "Your expense has been recorded successfully.",
       });
+      
+      // Call the onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
       
       reset();
       onClose();
