@@ -151,12 +151,38 @@ export default function AddBankAccountModal({ isOpen, onClose, onSuccess }: AddB
     onSuccess: (data) => {
       toast({
         title: "Bank Connection Initiated",
-        description: "Redirecting to your bank for authentication...",
+        description: "Opening bank authentication window...",
       });
+      
       // Open bank authentication in new window
-      window.open(data.redirectUrl, '_blank', 'width=600,height=700');
-      setIsConnecting(false);
-      onClose();
+      const authWindow = window.open(data.redirectUrl, '_blank', 'width=600,height=700,scrollbars=yes,resizable=yes');
+      
+      // Listen for authentication completion
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data.type === 'BANK_AUTH_SUCCESS') {
+          toast({
+            title: "Bank Connected Successfully!",
+            description: `Your ${selectedBank?.name} account has been connected.`,
+          });
+          
+          // Refresh bank accounts
+          queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
+          window.removeEventListener('message', handleMessage);
+          setIsConnecting(false);
+          onClose();
+        }
+      };
+      
+      window.addEventListener('message', handleMessage);
+      
+      // Clean up if window is closed manually
+      const checkClosed = setInterval(() => {
+        if (authWindow?.closed) {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', handleMessage);
+          setIsConnecting(false);
+        }
+      }, 1000);
     },
     onError: (error) => {
       toast({

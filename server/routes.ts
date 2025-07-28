@@ -257,6 +257,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mock authentication endpoint for development
+  app.get('/api/bank-connection/mock-auth', async (req, res) => {
+    const { consentId, institutionId, userId } = req.query;
+    
+    // Simulate bank authentication page
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Bank Authentication - Development Mode</title>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
+          .bank-logo { text-align: center; margin-bottom: 30px; }
+          .form-group { margin-bottom: 15px; }
+          label { display: block; margin-bottom: 5px; font-weight: bold; }
+          input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+          button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; }
+          button:hover { background: #0056b3; }
+          .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 4px; margin-bottom: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="bank-logo">
+          <h2>🏦 ${institutionId.toUpperCase()} Bank</h2>
+          <p><strong>Development Mode - Mock Authentication</strong></p>
+        </div>
+        
+        <div class="warning">
+          <strong>Note:</strong> This is a development simulation. In production, this would be your bank's actual login page.
+        </div>
+        
+        <form id="authForm">
+          <div class="form-group">
+            <label for="username">User ID / Mobile Number</label>
+            <input type="text" id="username" name="username" placeholder="Enter your bank user ID" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="Enter your password" required>
+          </div>
+          
+          <button type="submit">Authenticate & Grant Consent</button>
+        </form>
+        
+        <script>
+          document.getElementById('authForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Simulate authentication success
+            alert('Authentication successful! Your account will be connected to AskiBill.');
+            
+            // Close the popup and notify parent window
+            if (window.opener) {
+              window.opener.postMessage({
+                type: 'BANK_AUTH_SUCCESS',
+                consentId: '${consentId}',
+                institutionId: '${institutionId}'
+              }, '*');
+              window.close();
+            } else {
+              window.location.href = '/';
+            }
+          });
+        </script>
+      </body>
+      </html>
+    `);
+  });
+
   // Mobile bank account routes
   app.post('/api/mobile/bank-accounts/:userId', async (req, res) => {
     try {

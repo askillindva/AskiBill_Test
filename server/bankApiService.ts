@@ -77,6 +77,16 @@ export class AccountAggregatorService {
   // Step 1: Create consent request
   async createConsentRequest(request: ConsentRequest): Promise<{ consentId: string; redirectUrl: string }> {
     try {
+      // For development environment, simulate the consent flow
+      if (process.env.NODE_ENV === 'development' || !this.apiKey) {
+        const mockConsentId = `mock_consent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        return {
+          consentId: mockConsentId,
+          redirectUrl: `/api/bank-connection/mock-auth?consentId=${mockConsentId}&institutionId=${request.institutionId}&userId=${request.userId}`
+        };
+      }
+
       const consentData = {
         consentStart: new Date().toISOString(),
         consentExpiry: new Date(Date.now() + request.consentDuration * 24 * 60 * 60 * 1000).toISOString(),
@@ -142,6 +152,34 @@ export class AccountAggregatorService {
   // Step 2: Check consent status
   async getConsentStatus(consentId: string): Promise<{ status: string; accounts?: BankAccountData[] }> {
     try {
+      // For development environment, simulate consent status
+      if (process.env.NODE_ENV === 'development' || consentId.startsWith('mock_consent_')) {
+        // Simulate different statuses based on time elapsed
+        const createdTime = parseInt(consentId.split('_')[2]) || Date.now();
+        const timeElapsed = Date.now() - createdTime;
+        
+        if (timeElapsed < 5000) { // First 5 seconds - PENDING
+          return { status: 'PENDING' };
+        } else if (timeElapsed < 10000) { // Next 5 seconds - REQUESTED
+          return { status: 'REQUESTED' };
+        } else { // After 10 seconds - ACTIVE with mock accounts
+          const mockAccounts: BankAccountData[] = [
+            {
+              accountId: `acc_${Math.random().toString(36).substr(2, 9)}`,
+              institutionId: 'icici',
+              accountType: 'savings',
+              accountNumber: '**** **** 1234',
+              accountHolderName: 'John Doe',
+              currentBalance: 125000.50,
+              availableBalance: 125000.50,
+              currency: 'INR',
+              lastUpdated: new Date()
+            }
+          ];
+          return { status: 'ACTIVE', accounts: mockAccounts };
+        }
+      }
+
       const response = await fetch(`${this.baseUrl}/consents/${consentId}`, {
         method: 'GET',
         headers: {
