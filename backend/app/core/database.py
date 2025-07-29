@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import event
 import logging
+import os
 
 from app.core.config import settings
 
@@ -15,12 +16,19 @@ class Base(DeclarativeBase):
     pass
 
 
-# Async engine
+# Async engine with environment-based database URL
+database_url = settings.PYTHON_DATABASE_URL or settings.DATABASE_URL
+
+if not database_url:
+    raise ValueError("Database URL not configured. Please set DATABASE_URL or PYTHON_DATABASE_URL in your .env file")
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    database_url,
     echo=settings.DATABASE_ECHO,
     pool_pre_ping=True,
     pool_recycle=300,
+    pool_size=int(os.getenv("DB_POOL_SIZE", "10")),
+    max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "20")),
 )
 
 # Session factory

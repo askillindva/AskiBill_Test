@@ -6,10 +6,25 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
+import dotenv from 'dotenv';
 import { storage } from "./storage";
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+// Load environment variables
+dotenv.config();
+
+// Validate required environment variables
+const requiredAuthEnvVars = [
+  'REPLIT_DOMAINS',
+  'SESSION_SECRET',
+  'DATABASE_URL'
+];
+
+const missingAuthEnvVars = requiredAuthEnvVars.filter(envVar => !process.env[envVar]);
+
+if (missingAuthEnvVars.length > 0) {
+  throw new Error(
+    `Missing required authentication environment variables: ${missingAuthEnvVars.join(', ')}. Please check your .env file.`
+  );
 }
 
 const getOidcConfig = memoize(

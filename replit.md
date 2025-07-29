@@ -131,4 +131,13 @@ Preferred communication style: Simple, everyday language.
   - **Performance**: Async operations for 2-3x better I/O performance
   - **Security**: Enhanced authentication with session management and encryption
 
+- **Environment Variable Configuration**: Complete externalization of secrets and database connections
+  - **Database**: All PostgreSQL connections now use DATABASE_URL from .env file
+  - **API Keys**: Banking APIs, authentication secrets, and service keys externalized
+  - **Multi-Environment**: Same codebase works across development, staging, production
+  - **Python Backend**: Auto-converts database URLs for SQLAlchemy async compatibility
+  - **Docker Support**: Environment-based configuration for containerized deployment
+  - **Security Scripts**: Automated environment setup and validation tools
+  - **Zero Code Changes**: Deploy to any environment by changing only .env file
+
 The application follows a monorepo structure with clearly separated client, server, and shared code, making it suitable for deployment on various platforms while maintaining development simplicity.

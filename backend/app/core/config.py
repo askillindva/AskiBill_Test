@@ -4,7 +4,10 @@ Configuration settings for AskiBill FastAPI backend
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 import os
+from pathlib import Path
 
+# Load .env file from project root
+env_path = Path(__file__).parent.parent.parent / ".env"
 
 class Settings(BaseSettings):
     """Application settings"""
@@ -15,9 +18,17 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     
-    # Database
+    # Database - PostgreSQL Configuration
     DATABASE_URL: str = ""
+    PGHOST: str = "localhost"
+    PGPORT: int = 5432
+    PGUSER: str = ""
+    PGPASSWORD: str = ""
+    PGDATABASE: str = ""
     DATABASE_ECHO: bool = False
+    
+    # Python-specific database URL for SQLAlchemy async
+    PYTHON_DATABASE_URL: str = ""
     
     # Security
     SECRET_KEY: str = ""
@@ -56,8 +67,28 @@ class Settings(BaseSettings):
     APNS_TEAM_ID: Optional[str] = None
     
     class Config:
-        env_file = ".env"
+        env_file = str(env_path) if env_path.exists() else ".env"
+        env_file_encoding = 'utf-8'
         case_sensitive = True
+        
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
+        # Auto-generate Python database URL if not provided
+        if not self.PYTHON_DATABASE_URL and self.DATABASE_URL:
+            # Convert postgres:// to postgresql+asyncpg://
+            if self.DATABASE_URL.startswith("postgres://"):
+                self.PYTHON_DATABASE_URL = self.DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif self.DATABASE_URL.startswith("postgresql://"):
+                self.PYTHON_DATABASE_URL = self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+            else:
+                self.PYTHON_DATABASE_URL = self.DATABASE_URL
+        
+        # Build database URL from components if DATABASE_URL not provided
+        if not self.DATABASE_URL and all([self.PGHOST, self.PGUSER, self.PGPASSWORD, self.PGDATABASE]):
+            self.DATABASE_URL = f"postgresql://{self.PGUSER}:{self.PGPASSWORD}@{self.PGHOST}:{self.PGPORT}/{self.PGDATABASE}"
+            if not self.PYTHON_DATABASE_URL:
+                self.PYTHON_DATABASE_URL = f"postgresql+asyncpg://{self.PGUSER}:{self.PGPASSWORD}@{self.PGHOST}:{self.PGPORT}/{self.PGDATABASE}"
 
 
 # Create settings instance

@@ -37,12 +37,22 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: askibill-backend
+    env_file:
+      - .env
     environment:
+      # Override specific variables for Docker environment
       - DATABASE_URL=postgresql+asyncpg://askibill_user:secure_password_123@postgres:5432/askibill
+      - PYTHON_DATABASE_URL=postgresql+asyncpg://askibill_user:secure_password_123@postgres:5432/askibill
       - REDIS_URL=redis://redis:6379
-      - SECRET_KEY=your-super-secret-key-change-in-production
+      - PGHOST=postgres
+      - PGPORT=5432
+      - PGUSER=askibill_user
+      - PGPASSWORD=secure_password_123
+      - PGDATABASE=askibill
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - ENVIRONMENT=production
-      - ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
+      - DEBUG=false
     depends_on:
       - postgres
       - redis

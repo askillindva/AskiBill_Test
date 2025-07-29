@@ -1,5 +1,9 @@
 // Bank API Integration Service
+import dotenv from 'dotenv';
 import { allFinancialInstitutions, apiProviders, accountAggregators, type BankProvider } from './bankProviders';
+
+// Load environment variables
+dotenv.config();
 
 export interface BankConnection {
   provider: string;
@@ -53,25 +57,48 @@ export class AccountAggregatorService {
   private clientSecret: string;
 
   constructor(provider: 'setu' | 'yodlee' | 'anumati' = 'setu') {
-    // Configuration based on provider
+    // Configuration based on provider using environment variables
     switch (provider) {
       case 'setu':
-        this.baseUrl = process.env.NODE_ENV === 'production' 
-          ? apiProviders.setu.baseUrl 
-          : apiProviders.setu.sandboxUrl;
+        this.baseUrl = process.env.SETU_BASE_URL || 'https://sandbox.setu.co';
+        this.apiKey = process.env.SETU_API_KEY || '';
+        this.clientId = process.env.SETU_CLIENT_ID || '';
+        this.clientSecret = process.env.SETU_CLIENT_SECRET || '';
         break;
       case 'yodlee':
-        this.baseUrl = process.env.NODE_ENV === 'production'
-          ? apiProviders.yodlee.baseUrl
-          : apiProviders.yodlee.sandboxUrl;
+        this.baseUrl = process.env.YODLEE_BASE_URL || 'https://sandbox.api.yodlee.com/ysl';
+        this.apiKey = process.env.YODLEE_API_KEY || '';
+        this.clientId = process.env.YODLEE_CLIENT_ID || '';
+        this.clientSecret = process.env.YODLEE_CLIENT_SECRET || '';
+        break;
+      case 'anumati':
+        this.baseUrl = process.env.ANUMATI_BASE_URL || 'https://sandbox.anumati.com';
+        this.apiKey = process.env.ANUMATI_API_KEY || '';
+        this.clientId = process.env.ANUMATI_CLIENT_ID || '';
+        this.clientSecret = process.env.ANUMATI_CLIENT_SECRET || '';
         break;
       default:
-        this.baseUrl = apiProviders.setu.sandboxUrl;
+        this.baseUrl = process.env.SETU_BASE_URL || 'https://sandbox.setu.co';
+        this.apiKey = process.env.SETU_API_KEY || '';
+        this.clientId = process.env.SETU_CLIENT_ID || '';
+        this.clientSecret = process.env.SETU_CLIENT_SECRET || '';
     }
     
-    this.apiKey = process.env.BANK_API_KEY || '';
-    this.clientId = process.env.BANK_CLIENT_ID || '';
-    this.clientSecret = process.env.BANK_CLIENT_SECRET || '';
+    // Fallback to generic environment variables
+    if (!this.apiKey) {
+      this.apiKey = process.env.BANK_API_KEY || '';
+    }
+    if (!this.clientId) {
+      this.clientId = process.env.BANK_CLIENT_ID || '';
+    }
+    if (!this.clientSecret) {
+      this.clientSecret = process.env.BANK_CLIENT_SECRET || '';
+    }
+    
+    // Log warning if API keys are missing (in development)
+    if (process.env.NODE_ENV === 'development' && !this.apiKey) {
+      console.warn('⚠️  Banking API keys not configured. Using development mode with mock data.');
+    }
   }
 
   // Step 1: Create consent request
