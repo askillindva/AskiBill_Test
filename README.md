@@ -6,36 +6,220 @@ A modern, secure expense tracking application built with **Python, FastAPI, and 
 
 ### Prerequisites
 - Python 3.11+
-- PostgreSQL database
+- PostgreSQL database (local or cloud)
 - Environment variables configured
 
 ### Installation & Setup
 
-1. **Clone and setup environment**:
+1. **Install dependencies**:
+```bash
+# Install from project requirements
+pip install -r project_requirements.txt
+
+# Or install individually using the package manager
+pip install fastapi uvicorn streamlit sqlalchemy psycopg2-binary pandas plotly
+```
+
+2. **Database Setup**:
 ```bash
 # Copy environment template
 cp .env.example .env
-
-# Configure your database URL and secrets in .env
-nano .env
 ```
 
-2. **Install dependencies** (already installed in Replit):
-```bash
-# Dependencies are managed automatically
-pip install -r backend/requirements.txt
-```
+3. **Configure PostgreSQL** (see Database Configuration section below)
 
-3. **Run the application**:
+4. **Run the application**:
 ```bash
-# Single command to start both FastAPI and Streamlit
-python main.py
+# Start Streamlit frontend
+streamlit run streamlit_app.py --server.port 8501 --server.address 0.0.0.0
+
+# Or use the startup script
+python start_streamlit.py
 ```
 
 ### Access Points
 - **Streamlit Frontend**: http://localhost:8501
 - **FastAPI Backend**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
+
+## 🗄️ Database Configuration
+
+### PostgreSQL Setup Options
+
+#### Option 1: Replit Built-in PostgreSQL (Recommended for Development)
+Your Replit environment already includes PostgreSQL. The `DATABASE_URL` environment variable is automatically configured.
+
+```bash
+# Check if PostgreSQL is running
+echo $DATABASE_URL
+```
+
+#### Option 2: Local PostgreSQL Installation
+
+1. **Install PostgreSQL**:
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+
+# macOS with Homebrew
+brew install postgresql
+brew services start postgresql
+
+# Windows - Download from https://www.postgresql.org/download/
+```
+
+2. **Create Database and User**:
+```bash
+# Access PostgreSQL shell
+sudo -u postgres psql
+
+# Create database and user
+CREATE DATABASE askibill_db;
+CREATE USER askibill_user WITH ENCRYPTED PASSWORD 'your_secure_password';
+GRANT ALL PRIVILEGES ON DATABASE askibill_db TO askibill_user;
+\q
+```
+
+#### Option 3: Cloud PostgreSQL Providers
+
+**Neon (Recommended for Production)**:
+1. Sign up at [neon.tech](https://neon.tech)
+2. Create a new project
+3. Copy the connection string
+
+**Supabase**:
+1. Sign up at [supabase.com](https://supabase.com)
+2. Create a new project
+3. Go to Settings > Database > Connection string
+
+**Railway**:
+1. Sign up at [railway.app](https://railway.app)
+2. Create PostgreSQL service
+3. Copy the connection URL
+
+### Environment Configuration
+
+Create or update your `.env` file:
+
+```bash
+# Database Configuration
+DATABASE_URL=postgresql://username:password@localhost:5432/askibill_db
+
+# For Replit (automatically provided)
+# DATABASE_URL=postgresql://replit:password@db.postgresql-16.devbox.host:5432/replit
+
+# For Neon
+# DATABASE_URL=postgresql://username:password@ep-xxx.us-east-1.aws.neon.tech/neondb
+
+# For Supabase
+# DATABASE_URL=postgresql://postgres:password@db.xxx.supabase.co:5432/postgres
+
+# For Railway
+# DATABASE_URL=postgresql://postgres:password@containers-us-west-xxx.railway.app:5432/railway
+
+# Application Secrets
+SECRET_KEY=your-secret-key-here
+JWT_SECRET_KEY=your-jwt-secret-key-here
+ENCRYPTION_KEY=your-encryption-key-here
+
+# Optional: Banking API Keys
+# PLAID_CLIENT_ID=your_plaid_client_id
+# PLAID_SECRET=your_plaid_secret
+# PLAID_ENV=sandbox  # or development/production
+```
+
+### Database Migration and Setup
+
+```bash
+# Initialize database tables (when backend is implemented)
+python -c "
+from backend.app.core.database import engine
+from backend.app.models import user, expense, bank_account
+import asyncio
+async def create_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(user.Base.metadata.create_all)
+        await conn.run_sync(expense.Base.metadata.create_all)
+        await conn.run_sync(bank_account.Base.metadata.create_all)
+asyncio.run(create_tables())
+"
+```
+
+### Connection Testing
+
+Test your database connection:
+
+```python
+# test_db_connection.py
+import asyncio
+import asyncpg
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+async def test_connection():
+    try:
+        conn = await asyncpg.connect(os.getenv('DATABASE_URL'))
+        version = await conn.fetchval('SELECT version()')
+        print(f"✅ Connected to PostgreSQL: {version}")
+        await conn.close()
+    except Exception as e:
+        print(f"❌ Connection failed: {e}")
+
+if __name__ == "__main__":
+    asyncio.run(test_connection())
+```
+
+Run the test:
+```bash
+python test_db_connection.py
+```
+
+### Troubleshooting Database Issues
+
+**Common Issues and Solutions**:
+
+1. **Connection Refused**:
+```bash
+# Check if PostgreSQL is running
+sudo systemctl status postgresql
+# Start if not running
+sudo systemctl start postgresql
+```
+
+2. **Authentication Failed**:
+```bash
+# Reset password
+sudo -u postgres psql
+\password askibill_user
+```
+
+3. **Database Does Not Exist**:
+```bash
+# Create database
+sudo -u postgres createdb askibill_db
+```
+
+4. **Permission Denied**:
+```bash
+# Grant permissions
+sudo -u postgres psql
+GRANT ALL PRIVILEGES ON DATABASE askibill_db TO askibill_user;
+GRANT ALL ON SCHEMA public TO askibill_user;
+```
+
+### Database Schema Overview
+
+The application uses the following main tables:
+- `users` - User authentication and profile data
+- `user_profiles` - Extended user information and preferences
+- `expenses` - Expense records with categories and dates
+- `bank_accounts` - Connected bank account information
+- `transactions` - Imported banking transactions
+- `categories` - Expense categories and budgets
+- `sessions` - User session management
 
 ## 🏗 Architecture
 
