@@ -13,6 +13,7 @@ import json
 from typing import Dict, List, Optional
 import asyncio
 import httpx
+import os
 
 # Page configuration
 st.set_page_config(
@@ -306,7 +307,19 @@ def show_dashboard():
             with col3:
                 st.write(expense['category'])
             with col4:
-                st.write(expense['date'].strftime('%Y-%m-%d'))
+                # Handle pandas datetime conversion
+                date_val = expense['date']
+                try:
+                    # Handle different data types properly
+                    if pd.isnull(date_val):
+                        st.write("N/A")
+                    else:
+                        # Convert to timestamp and format
+                        date_ts = pd.to_datetime(date_val)
+                        st.write(date_ts.strftime('%Y-%m-%d'))
+                except Exception:
+                    # Fallback to string representation
+                    st.write(str(date_val))
     else:
         st.info("No recent transactions found")
 
