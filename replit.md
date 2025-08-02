@@ -1,8 +1,8 @@
-# AskiBill - Expense Tracking Application
+# AskiBill - Python Full Stack Expense Tracker
 
 ## Overview
 
-AskiBill is a lightweight, secure expense tracking web application built with a full-stack architecture using Express.js backend, React frontend, and PostgreSQL database. It targets users managing personal, professional, and academic expenses with features like secure authentication, financial profile setup, and encrypted personal data storage.
+AskiBill is a modern, secure expense tracking application built with **Python, FastAPI, and Streamlit**. It provides comprehensive financial management with interactive dashboards, real-time analytics, and secure banking integration through India's RBI-approved Account Aggregator framework.
 
 ## User Preferences
 
@@ -11,40 +11,42 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Backend Architecture
-- **Framework**: Express.js with TypeScript
-- **Database**: PostgreSQL with Drizzle ORM
-- **Authentication**: Replit Auth with OpenID Connect
-- **Session Management**: PostgreSQL-based session storage using connect-pg-simple
+- **Framework**: FastAPI with Python 3.11+
+- **Database**: PostgreSQL with SQLAlchemy 2.0 (async)
+- **Authentication**: JWT-based secure authentication
+- **Session Management**: Redis-based session storage
 - **Database Provider**: Neon serverless PostgreSQL
+- **Background Tasks**: Celery with Redis broker
 
 ### Frontend Architecture
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite
-- **Routing**: Wouter (lightweight React router)
-- **State Management**: TanStack Query for server state
-- **UI Components**: Radix UI with shadcn/ui design system
-- **Styling**: Tailwind CSS with custom CSS variables
-- **Form Handling**: React Hook Form with Zod validation
+- **Framework**: Streamlit for interactive web interface
+- **Charts**: Plotly for rich data visualization
+- **Data Processing**: Pandas for financial analytics
+- **State Management**: Streamlit native session state
+- **Styling**: Custom CSS with Streamlit theming
+- **Form Handling**: Streamlit native form components
 
 ## Key Components
 
 ### Database Schema
-- **Sessions Table**: Required for Replit Auth session management
-- **Users Table**: Core user data (ID, email, name, profile image)
-- **User Profiles Table**: Financial and personal information with encrypted data field
-- **Expenses Table**: User expense records with encrypted payload support
+- **Users Table**: Core user data with JWT authentication
+- **User Profiles Table**: Financial information and preferences
+- **Expenses Table**: Categorized expense records with metadata
+- **Bank Accounts Table**: Connected bank account information
+- **Transactions Table**: Imported banking transactions
 
 ### Authentication System
-- Uses Replit's OpenID Connect authentication
-- Session-based authentication with PostgreSQL storage
-- Mandatory user operations (getUser, upsertUser) for Replit Auth compatibility
-- Protected routes with isAuthenticated middleware
+- JWT-based authentication with refresh tokens
+- Password hashing with bcrypt and salt rounds
+- Session management with Redis storage
+- Protected API routes with middleware authentication
 
-### Frontend Pages
-- **Landing**: Authentication entry point
-- **Setup**: First-time user financial profile configuration
-- **Dashboard**: Main application interface with expense management
-- **Profile Management**: Modal-based user profile editing
+### Frontend Pages (Streamlit)
+- **Dashboard**: Interactive financial overview with charts
+- **Add Expense**: Form-based expense entry with validation
+- **Analytics**: Advanced spending analysis and trends
+- **Profile**: User settings and financial goals management
+- **Bank Accounts**: Account Aggregator integration interface
 
 ### Data Encryption
 - Client-side encryption support for personal data
@@ -150,9 +152,19 @@ Preferred communication style: Simple, everyday language.
   - **Docker Support**: Containerized deployment for full Python stack
   - **Development Speed**: Rapid prototyping with Python-native tools
 
-The application now supports three deployment options:
-1. **JavaScript Stack**: React + Express.js (currently running)
-2. **Python Stack**: Streamlit + FastAPI (new option)
-3. **Hybrid Stack**: Mix and match frontend/backend as needed
+### February 02, 2025 - Python-Only Implementation
+- **Complete Migration**: Converted to Python-only stack removing all JavaScript/Node.js code
+  - **Single Stack**: FastAPI backend + Streamlit frontend only
+  - **Simplified Architecture**: No more dual language support, pure Python development
+  - **Performance**: Better data processing with pandas and NumPy integration
+  - **Development Speed**: Faster iteration with Python-native tools
+  - **Deployment**: Single runtime environment for easier deployment
 
-All versions share the same PostgreSQL database and environment configuration, making it suitable for deployment on various platforms while maintaining development simplicity.
+The application now supports **Python-only deployment** with:
+- **FastAPI Backend**: High-performance async API with SQLAlchemy 2.0
+- **Streamlit Frontend**: Interactive web interface with rich data visualization
+- **Environment-based Configuration**: Same .env approach for all environments
+- **Docker Support**: Containerized deployment with single stack
+- **Banking Integration**: Enhanced Account Aggregator framework support
+
+This focused approach eliminates complexity while maintaining all core features with improved performance and developer experience.

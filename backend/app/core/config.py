@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 # Load .env file from project root
-env_path = Path(__file__).parent.parent.parent / ".env"
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
 
 class Settings(BaseSettings):
     """Application settings"""
