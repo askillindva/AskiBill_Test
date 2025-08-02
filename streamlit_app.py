@@ -311,7 +311,9 @@ def show_dashboard():
                 date_val = expense['date']
                 try:
                     # Handle different data types properly
-                    if pd.isna(date_val):
+                    # Use a simpler approach to avoid pandas Series boolean issues
+                    date_str = str(date_val)
+                    if date_str.lower() in ['', 'nan', 'none', 'nat'] or date_val is None:
                         st.write("N/A")
                     else:
                         # Convert to timestamp and format
