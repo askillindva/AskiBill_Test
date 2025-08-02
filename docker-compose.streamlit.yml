@@ -1,0 +1,165 @@
+# AskiBill Full Python Stack with Streamlit
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: askibill-postgres-streamlit
+    environment:
+      - POSTGRES_USER=askibill_user
+      - POSTGRES_PASSWORD=secure_password_123
+      - POSTGRES_DB=askibill
+    volumes:
+      - postgres_data_streamlit:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - askibill-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U askibill_user -d askibill"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for Caching
+  redis:
+    image: redis:7-alpine
+    container_name: askibill-redis-streamlit
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_streamlit:/data
+    networks:
+      - askibill-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: askibill-fastapi-backend
+    env_file:
+      - .env
+    environment:
+      # Override for Docker environment
+      - DATABASE_URL=postgresql+asyncpg://askibill_user:secure_password_123@postgres:5432/askibill
+      - REDIS_URL=redis://redis:6379
+      - PGHOST=postgres
+      - PGPORT=5432
+      - PGUSER=askibill_user
+      - PGPASSWORD=secure_password_123
+      - PGDATABASE=askibill
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ENVIRONMENT=production
+      - DEBUG=false
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - askibill-network
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - uploads_data_streamlit:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Streamlit Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: askibill-streamlit-frontend
+    env_file:
+      - .env
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - API_BASE_URL=http://backend:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - askibill-network
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker (Background Tasks)
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: askibill-celery-worker
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://askibill_user:secure_password_123@postgres:5432/askibill
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    command: celery -A app.core.celery worker --loglevel=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - askibill-network
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+
+  # Celery Beat (Scheduled Tasks)
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: askibill-celery-beat
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://askibill_user:secure_password_123@postgres:5432/askibill
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    command: celery -A app.core.celery beat --loglevel=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - askibill-network
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+
+networks:
+  askibill-network:
+    driver: bridge
+
+volumes:
+  postgres_data_streamlit:
+  redis_data_streamlit:
+  uploads_data_streamlit:
