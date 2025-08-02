@@ -311,7 +311,7 @@ def show_dashboard():
                 date_val = expense['date']
                 try:
                     # Handle different data types properly
-                    if pd.isnull(date_val):
+                    if pd.isna(date_val):
                         st.write("N/A")
                     else:
                         # Convert to timestamp and format

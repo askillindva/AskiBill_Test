@@ -9,10 +9,12 @@ from contextlib import asynccontextmanager
 import uvicorn
 import logging
 
-from app.core.config import settings
-from app.core.database import create_db_and_tables
-from app.api import auth, expenses, banking, dashboard, users
-from app.core.security import get_current_user
+from app.api import auth
+# Temporarily comment out missing imports to get basic app running
+# from app.core.config import settings
+# from app.core.database import create_db_and_tables
+# from app.api import expenses, banking, dashboard, users
+# from app.core.security import get_current_user
 
 
 @asynccontextmanager
@@ -20,7 +22,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     logging.info("Starting AskiBill Backend...")
-    await create_db_and_tables()
+    # await create_db_and_tables()  # Temporarily disabled
     yield
     # Shutdown
     logging.info("Shutting down AskiBill Backend...")
@@ -31,15 +33,15 @@ app = FastAPI(
     title="AskiBill API",
     description="Secure Expense Tracking and Banking Integration API",
     version="2.0.0",
-    docs_url="/docs" if settings.ENVIRONMENT == "development" else None,
-    redoc_url="/redoc" if settings.ENVIRONMENT == "development" else None,
+    docs_url="/docs",
+    redoc_url="/redoc",
     lifespan=lifespan
 )
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=["*"],  # Simplified for development
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["*"],
@@ -48,7 +50,7 @@ app.add_middleware(
 # Add trusted host middleware for security
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=settings.ALLOWED_HOSTS
+    allowed_hosts=["*"]  # Simplified for development
 )
 
 
@@ -80,10 +82,11 @@ async def health_check():
 
 # API Routes
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(users.router, prefix="/api/users", tags=["Users"])
-app.include_router(expenses.router, prefix="/api/expenses", tags=["Expenses"])
-app.include_router(banking.router, prefix="/api/banking", tags=["Banking"])
-app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
+# Temporarily comment out missing routers
+# app.include_router(users.router, prefix="/api/users", tags=["Users"])
+# app.include_router(expenses.router, prefix="/api/expenses", tags=["Expenses"])
+# app.include_router(banking.router, prefix="/api/banking", tags=["Banking"])
+# app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 
 
 # Root endpoint
@@ -93,7 +96,7 @@ async def root():
     return {
         "message": "AskiBill API v2.0.0",
         "description": "Secure Expense Tracking and Banking Integration",
-        "docs": "/docs" if settings.ENVIRONMENT == "development" else "Contact admin for API documentation"
+        "docs": "/docs"
     }
 
 

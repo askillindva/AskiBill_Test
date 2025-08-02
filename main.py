@@ -16,21 +16,26 @@ def run_fastapi():
     """Run FastAPI backend server"""
     print("🚀 Starting FastAPI Backend on http://localhost:8000")
     
-    os.chdir("backend")
-    cmd = [
-        sys.executable, "-m", "uvicorn", 
-        "app.main:app",
-        "--host", "0.0.0.0",
-        "--port", "8000",
-        "--reload"
-    ]
+    # Change to backend directory
+    backend_dir = Path("backend")
+    original_dir = Path.cwd()
     
     try:
+        os.chdir(backend_dir)
+        cmd = [
+            sys.executable, "-m", "uvicorn", 
+            "app.main:app",
+            "--host", "0.0.0.0",
+            "--port", "8000",
+            "--reload"
+        ]
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ FastAPI failed: {e}")
     except KeyboardInterrupt:
         print("🛑 FastAPI shutting down...")
+    finally:
+        os.chdir(original_dir)
 
 def run_streamlit():
     """Run Streamlit frontend"""
